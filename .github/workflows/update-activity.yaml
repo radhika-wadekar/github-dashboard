@@ -1,0 +1,53 @@
+name: Update GitHub Activity
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit-results:
+        type: boolean
+        required: false
+        default: true
+        description: |
+          If true, the edited github-activity.csv file will be committed to the repository.
+  schedule:
+    # Run at 00:00 UTC MON-FRI
+    - cron: "0 0 * * 1-5"
+
+env:
+  TERM: xterm
+
+jobs:
+  update-github-activity:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run script to fetch data
+        run: |
+          python get-data.py
+        env:
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Add and Commit updated CSV file
+        if: |
+          github.event_name == 'schedule' ||
+          (github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.commit-results == 'true')
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: github-activity.csv
+          message: "Update the GitHub Activity CSV file"
